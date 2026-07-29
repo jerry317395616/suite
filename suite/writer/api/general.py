@@ -1,21 +1,10 @@
 import frappe
-
-import frappe
 from pypika import CustomFunction, Order
 from pypika import functions as fn
 
-from suite.drive.utils import get_default_team, FILE_FIELDS, STATUS_ACTIVE
+from suite.drive.utils import get_default_team, file_fields, STATUS_ACTIVE
 from suite.drive.api.permissions import get_user_access
 from suite.writer.search import WriterSearch
-
-DriveUser = frappe.qb.DocType("User")
-UserGroupMember = frappe.qb.DocType("User Group Member")
-DriveFile = frappe.qb.DocType("File")
-DrivePermission = frappe.qb.DocType("Drive Permission")
-Team = frappe.qb.DocType("Drive Team")
-TeamMember = frappe.qb.DocType("Drive Team Member")
-DriveFavourite = frappe.qb.DocType("Drive Favourite")
-Recents = frappe.qb.DocType("Drive Entity Log")
 
 Binary = CustomFunction("BINARY", ["expression"])
 
@@ -26,34 +15,38 @@ def get_document_list(
     limit: int = 20,
 ):
     user = frappe.session.user
+    drive_file = frappe.qb.DocType("File")
+    drive_permission = frappe.qb.DocType("Drive Permission")
+    drive_favourite = frappe.qb.DocType("Drive Favourite")
+    recents = frappe.qb.DocType("Drive Entity Log")
 
     recently_opened = (
-        frappe.qb.from_(Recents).select(Recents.entity_name).where(Recents.user == user)
+        frappe.qb.from_(recents).select(recents.entity_name).where(recents.user == user)
     )
 
-    recent_field = fn.Coalesce(Recents.last_interaction, DriveFile.file_modified)
+    recent_field = fn.Coalesce(recents.last_interaction, drive_file.file_modified)
     query = (
-        frappe.qb.from_(DriveFile)
+        frappe.qb.from_(drive_file)
         .select(
-            *FILE_FIELDS,
-            DriveFile.mime_type,
+            *file_fields(),
+            drive_file.mime_type,
             recent_field.as_("recent"),
         )
-        .where((DriveFile.status == STATUS_ACTIVE) & (DriveFile.mime_type == "frappe_doc"))
-        .where((DriveFile.owner == user) | (DriveFile.name.isin(recently_opened)))
+        .where((drive_file.status == STATUS_ACTIVE) & (drive_file.mime_type == "frappe_doc"))
+        .where((drive_file.owner == user) | (drive_file.name.isin(recently_opened)))
     )
 
     query = (
-        query.left_join(DriveFavourite)
-        .on((DriveFavourite.entity == DriveFile.name) & (DriveFavourite.user == user))
-        .select(DriveFavourite.name.as_("is_favourite"))
+        query.left_join(drive_favourite)
+        .on((drive_favourite.entity == drive_file.name) & (drive_favourite.user == user))
+        .select(drive_favourite.name.as_("is_favourite"))
     )
 
-    query = query.left_join(Recents).on(
-        (Recents.entity_name == DriveFile.name) & (Recents.user == frappe.session.user)
+    query = query.left_join(recents).on(
+        (recents.entity_name == drive_file.name) & (recents.user == frappe.session.user)
     )
 
-    query = query.select(Recents.last_interaction.as_("accessed"))
+    query = query.select(recents.last_interaction.as_("accessed"))
 
     # Add ordering
     query = query.orderby(recent_field, order=Order.desc)
@@ -70,28 +63,28 @@ def get_document_list(
 
     # Rest of your processing code
     child_count_query = (
-        frappe.qb.from_(DriveFile)
-        .where((DriveFile.team == get_default_team()) & (DriveFile.status == STATUS_ACTIVE))
-        .select(DriveFile.folder, fn.Count("*").as_("child_count"))
-        .groupby(DriveFile.folder)
+        frappe.qb.from_(drive_file)
+        .where((drive_file.team == get_default_team()) & (drive_file.status == STATUS_ACTIVE))
+        .select(drive_file.folder, fn.Count("*").as_("child_count"))
+        .groupby(drive_file.folder)
     )
     share_query = (
-        frappe.qb.from_(DriveFile)
-        .right_join(DrivePermission)
-        .on(DrivePermission.entity == DriveFile.name)
-        .where((DrivePermission.user != "") & (DrivePermission.user != "$TEAM"))
-        .select(DriveFile.name, fn.Count("*").as_("share_count"))
-        .groupby(DriveFile.name)
+        frappe.qb.from_(drive_file)
+        .right_join(drive_permission)
+        .on(drive_permission.entity == drive_file.name)
+        .where((drive_permission.user != "") & (drive_permission.user != "$TEAM"))
+        .select(drive_file.name, fn.Count("*").as_("share_count"))
+        .groupby(drive_file.name)
     )
     public_files_query = (
-        frappe.qb.from_(DrivePermission)
-        .where(DrivePermission.user == "")
-        .select(DrivePermission.entity)
+        frappe.qb.from_(drive_permission)
+        .where(drive_permission.user == "")
+        .select(drive_permission.entity)
     )
     team_files_query = (
-        frappe.qb.from_(DrivePermission)
-        .where(DrivePermission.team == 1)
-        .select(DrivePermission.entity)
+        frappe.qb.from_(drive_permission)
+        .where(drive_permission.team == 1)
+        .select(drive_permission.entity)
     )
     public_files = set(k[0] for k in public_files_query.run())
     team_files = set(k[0] for k in team_files_query.run())

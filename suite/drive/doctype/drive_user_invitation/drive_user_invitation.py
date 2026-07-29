@@ -33,7 +33,8 @@ class DriveUserInvitation(Document):
                         "message": f"A person ({self.email}) from your domain has joined Frappe Drive",
                     }
                 ).insert(ignore_permissions=True)
-            frappe.db.commit()
+            # after_insert may send notifications outside the request lifecycle; persist them now.
+            frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
     def invite_via_email(self):
         frappe.sendmail(
@@ -54,7 +55,8 @@ class DriveUserInvitation(Document):
         if self.status == "Expired" or self.has_expired():
             self.status = "Expired"
             self.save(ignore_permissions=True)
-            frappe.db.commit()
+            # frappe.throw rolls back the request, so persist the terminal expiry first.
+            frappe.db.commit()  # nosemgrep: frappe-manual-commit
             frappe.throw("Invalid or expired key")
 
         exists = frappe.db.exists(
@@ -78,7 +80,8 @@ class DriveUserInvitation(Document):
                     "login_count": 1,
                 }
             ).insert(ignore_permissions=True)
-            frappe.db.commit()
+            # The signup redirect immediately reads this request from a separate request.
+            frappe.db.commit()  # nosemgrep: frappe-manual-commit
             user_exists = frappe.db.exists("User", self.email)
 
             if not user_exists:
@@ -96,7 +99,8 @@ class DriveUserInvitation(Document):
         self.status = "Accepted"
         self.accepted_at = frappe.utils.now()
         self.save(ignore_permissions=True)
-        frappe.db.commit()
+        # Persist membership before login_as changes the active session user.
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
         if frappe.session.user == "Guest":
             frappe.local.login_manager.login_as(self.email)

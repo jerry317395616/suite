@@ -15,7 +15,8 @@ def get_desk_theme():
 
 def get_context():
     csrf_token = frappe.sessions.get_csrf_token()
-    frappe.db.commit()
+    # Persist the generated CSRF/session state before returning boot data.
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit
     context = frappe._dict()
     context.boot = get_boot()
     context.boot.csrf_token = csrf_token

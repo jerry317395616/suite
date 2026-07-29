@@ -8,8 +8,6 @@ import frappe
 from pypika import Field, functions as fn
 import mimemapper
 
-DriveFile = frappe.qb.DocType("File")
-
 STATUS_ACTIVE = "Active"
 STATUS_TRASHED = "Trashed"
 STATUS_REMOVED = "Removed"
@@ -122,23 +120,26 @@ MIME_LIST_MAP = {
 }
 
 
-FILE_FIELDS = [
-    "name",
-    "file_name",
-    "folder",
-    "file_url",
-    "file_size",
-    "file_type",
-    "is_folder",
-    "content_doctype",
-    "content_docname",
-    "team",
-    "creation",
-    fn.Coalesce(Field("file_modified"), DriveFile.modified).as_("modified"),
-    "owner",
-    "attached_to_doctype",
-    "attached_to_name",
-]
+def file_fields():
+    """Return File fields with Query Builder terms bound to the active site."""
+    drive_file = frappe.qb.DocType("File")
+    return [
+        "name",
+        "file_name",
+        "folder",
+        "file_url",
+        "file_size",
+        "file_type",
+        "is_folder",
+        "content_doctype",
+        "content_docname",
+        "team",
+        "creation",
+        fn.Coalesce(Field("file_modified"), drive_file.modified).as_("modified"),
+        "owner",
+        "attached_to_doctype",
+        "attached_to_name",
+    ]
 
 
 def hide_storage_key(row):
@@ -153,11 +154,12 @@ def hide_storage_key(row):
 
 
 def get_home_folder(team):
-    team_filter = DriveFile.team.isnull() if not team else (DriveFile.team == team)
+    drive_file = frappe.qb.DocType("File")
+    team_filter = drive_file.team.isnull() if not team else (drive_file.team == team)
     ls = (
-        frappe.qb.from_(DriveFile)
-        .where(team_filter & DriveFile.folder.isnull())
-        .select(DriveFile.name, DriveFile.file_url)
+        frappe.qb.from_(drive_file)
+        .where(team_filter & drive_file.folder.isnull())
+        .select(drive_file.name, drive_file.file_url)
         .run(as_dict=True)
     )
     if not ls:
@@ -232,16 +234,10 @@ def generate_upward_path(entity_name, user=None, team=0):
     """
     if user is None:
         user = frappe.session.user
-    user = frappe.db.escape(user if user != "Guest" else "")
-
-    filter_: str
-    if team:
-        filter_ = "p.team = 1"
-    else:
-        filter_ = f"p.user = {user}"
+    user = user if user != "Guest" else ""
 
     result = frappe.db.sql(
-        f"""WITH RECURSIVE
+        """WITH RECURSIVE
             generated_path as (
                 SELECT
                     `tabFile`.file_name,
@@ -281,10 +277,14 @@ def generate_upward_path(entity_name, user=None, team=0):
         FROM
             generated_path  as gp
         LEFT JOIN `tabDrive Permission` as p
-        ON gp.name = p.entity AND {filter_}
+        ON gp.name = p.entity
+            AND (
+                (%(team)s = 1 AND p.team = 1)
+                OR (%(team)s = 0 AND p.user = %(user)s)
+            )
         ORDER BY gp.level DESC;
     """,
-        values={"entity_name": entity_name},
+        values={"entity_name": entity_name, "team": int(bool(team)), "user": user},
         as_dict=1,
     )
     for i, p in enumerate(result):

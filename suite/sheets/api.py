@@ -24,6 +24,8 @@ def ping_presence(name: str) -> None:
 	frappe.publish_realtime(
 		"sheet_presence",
 		{"sheet": name, "user": user, **identity},
+		doctype="Sheet",
+		docname=name,
 		after_commit=False,
 	)
 
@@ -52,6 +54,8 @@ def broadcast_op(name: str, op: str) -> None:
 	frappe.publish_realtime(
 		"sheet_op",
 		{"sheet": name, "user": frappe.session.user, "op": op},
+		doctype="Sheet",
+		docname=name,
 		after_commit=False,
 	)
 
@@ -65,6 +69,8 @@ def broadcast_cursor(name: str, r: int, c: int, sub_sheet: str) -> None:
 	frappe.publish_realtime(
 		"sheet_cursor",
 		{"sheet": name, "user": user, **identity, "r": int(r), "c": int(c), "sub_sheet": sub_sheet},
+		doctype="Sheet",
+		docname=name,
 		after_commit=False,
 	)
 
@@ -107,6 +113,8 @@ def yjs_relay(name: str, event: str, payload: str) -> None:
 	frappe.publish_realtime(
 		event,
 		{"sheet": name, "user": frappe.session.user, "payload": payload},
+		doctype="Sheet",
+		docname=name,
 		after_commit=False,
 	)
 

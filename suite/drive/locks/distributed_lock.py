@@ -45,7 +45,9 @@ class DistributedLock(object):
 
     def _add(self, key, value, ttl):
         """Returns true if key does not already exist and value is set"""
-        return frappe.cache().set(key, value, ex=ttl, nx=True)
+        # The key was site-prefixed with cache.make_key in __init__; raw SET is
+        # required here for Redis' atomic NX lock acquisition.
+        return frappe.cache().set(key, value, ex=ttl, nx=True)  # nosemgrep: frappe-cache-breaks-multitenancy
 
     def _increment(self, key, ttl):
         """Atomic transaction to increment value. Returns False if current value cannot be incremented.

@@ -6,11 +6,11 @@ from suite.drive.api.permissions import get_teams
 from suite.drive.utils import STATUS_ACTIVE, default_team
 
 MEGA_BYTE = 1024**2
-DriveFile = frappe.qb.DocType("File")
 
 
 @frappe.whitelist()
 def storage_breakdown(team: str, owned_only: bool):
+	drive_file = frappe.qb.DocType("File")
 	if team not in get_teams():
 		frappe.throw(_("You don't have access to this team."), frappe.PermissionError)
 
@@ -32,16 +32,16 @@ def storage_breakdown(team: str, owned_only: bool):
 	)
 
 	query = (
-		frappe.qb.from_(DriveFile)
-		.select(DriveFile.file_type, fn.Sum(DriveFile.file_size).as_("file_size"))
-		.where((DriveFile.is_folder == 0) & (DriveFile.status == STATUS_ACTIVE) & (DriveFile.team == team))
+		frappe.qb.from_(drive_file)
+		.select(drive_file.file_type, fn.Sum(drive_file.file_size).as_("file_size"))
+		.where((drive_file.is_folder == 0) & (drive_file.status == STATUS_ACTIVE) & (drive_file.team == team))
 	)
 	if owned_only:
-		query = query.where(DriveFile.owner == frappe.session.user)
+		query = query.where(drive_file.owner == frappe.session.user)
 
 	return {
 		"limit": limit,
-		"total": query.groupby(DriveFile.file_type).run(as_dict=True),
+		"total": query.groupby(drive_file.file_type).run(as_dict=True),
 		"entities": entities,
 	}
 
@@ -61,15 +61,16 @@ def storage_bar_data(team: str | None = None, entity_name: str | None = None):
 
 
 def get_storage_usage(team: str):
+	drive_file = frappe.qb.DocType("File")
 	query = (
-		frappe.qb.from_(DriveFile)
+		frappe.qb.from_(drive_file)
 		.where(
-			(DriveFile.team == team)
-			& (DriveFile.is_folder == 0)
-			& (DriveFile.owner == frappe.session.user)
-			& (DriveFile.status == STATUS_ACTIVE)
+			(drive_file.team == team)
+			& (drive_file.is_folder == 0)
+			& (drive_file.owner == frappe.session.user)
+			& (drive_file.status == STATUS_ACTIVE)
 		)
-		.select(fn.Coalesce(fn.Sum(DriveFile.file_size), 0).as_("total_size"))
+		.select(fn.Coalesce(fn.Sum(drive_file.file_size), 0).as_("total_size"))
 	)
 	result = query.run(as_dict=True)[0]
 	result["limit"] = frappe.get_value("Drive Team", team, "quota") * MEGA_BYTE

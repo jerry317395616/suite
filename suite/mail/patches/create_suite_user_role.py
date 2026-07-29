@@ -43,10 +43,12 @@ def execute() -> None:
 	_assign_role(users)
 
 	for doctype in OWNER_SCOPED_DOCTYPES:
-		table = f"tab{doctype}"
-		frappe.db.sql(
-			f"UPDATE `{table}` SET `owner` = `user` WHERE `user` IS NOT NULL AND `owner` != `user`"
-		)
+		table = frappe.qb.DocType(doctype)
+		(
+			frappe.qb.update(table)
+			.set(table.owner, table.user)
+			.where(table.user.isnotnull() & (table.owner != table.user))
+		).run()
 
 
 def _assign_role(users: set[str]) -> None:

@@ -16,7 +16,8 @@ def get_context(context):
 	dispatches to the right module client-side.
 	"""
 	csrf_token = frappe.sessions.get_csrf_token()
-	frappe.db.commit()
+	# Persist the generated CSRF/session state before returning boot data.
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	context.boot = get_boot()
 	context.boot.csrf_token = csrf_token

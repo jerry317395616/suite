@@ -5,7 +5,8 @@ no_cache = 1
 
 
 def get_context():
-	frappe.db.commit()
+	# Boot generation can create session state needed by the rendered page.
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 	context = frappe._dict()
 	context.boot = get_boot()
 	return context

@@ -26,6 +26,14 @@ export function createRealtimeAdapter({
 } = {}) {
 	if (!sheetId) throw new Error('createRealtimeAdapter: sheetId is required')
 
+	function subscribe() {
+		realtime?.doc_subscribe?.('Sheet', sheetId)
+	}
+
+	function unsubscribe() {
+		realtime?.doc_unsubscribe?.('Sheet', sheetId)
+	}
+
 	// Map<eventName, Map<originalCb, wrappedCb>> — needed so `off` can
 	// remove the exact wrapped callback we registered on the socket.
 	const wrapped = new Map()
@@ -65,5 +73,5 @@ export function createRealtimeAdapter({
 		}
 	}
 
-	return { publish, on, off }
+	return { publish, on, off, subscribe, unsubscribe }
 }

@@ -54,7 +54,8 @@ def rollup_snapshots() -> dict:
 		for snap_name in to_delete:
 			frappe.delete_doc("Sheet Snapshot", snap_name, ignore_permissions=True, force=True)
 			deleted += 1
-		frappe.db.commit()
+		# Each sheet is an independent maintenance batch and restart checkpoint.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	return {"scanned": scanned, "deleted": deleted}
 
@@ -89,7 +90,8 @@ def truncate_op_log() -> dict:
 			{"sheet": sheet_name, "min_seq": min_keep_seq, "cutoff": hard_cutoff},
 		)
 		deleted += frappe.db.sql("SELECT ROW_COUNT()")[0][0]
-		frappe.db.commit()
+		# Each sheet is an independent maintenance batch and restart checkpoint.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	return {"deleted": deleted}
 

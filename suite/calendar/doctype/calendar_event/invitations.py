@@ -253,8 +253,9 @@ def _render(kind, event, organizer, organizer_name, participant, links) -> tuple
 
 	context = _context(event, organizer, organizer_name, participant, links)
 
-	subject = frappe.render_template(DEFAULT_SUBJECTS[kind], context, is_path=False)
-	html = frappe.render_template(template_path(DEFAULT_TEMPLATES[kind]), context, is_path=True)
+	# kind is produced by _plan and can only select code-owned subject/template constants.
+	subject = frappe.render_template(DEFAULT_SUBJECTS[kind], context, is_path=False)  # nosemgrep: frappe-ssti
+	html = frappe.render_template(template_path(DEFAULT_TEMPLATES[kind]), context, is_path=True)  # nosemgrep: frappe-ssti
 	return subject, html
 
 
@@ -276,8 +277,9 @@ def _render_response(
 		}
 	)
 
-	subject = frappe.render_template(DEFAULT_SUBJECTS["response"], context, is_path=False)
-	html = frappe.render_template(template_path(DEFAULT_TEMPLATES["response"]), context, is_path=True)
+	# Both templates are code-owned constants; no request-controlled template is rendered.
+	subject = frappe.render_template(DEFAULT_SUBJECTS["response"], context, is_path=False)  # nosemgrep: frappe-ssti
+	html = frappe.render_template(template_path(DEFAULT_TEMPLATES["response"]), context, is_path=True)  # nosemgrep: frappe-ssti
 	return subject, html
 
 

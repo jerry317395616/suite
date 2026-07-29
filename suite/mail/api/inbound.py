@@ -220,4 +220,5 @@ def update_mail_sync_history(
 		kwargs["last_received_mail"] = last_received_mail
 
 	frappe.db.set_value(sync_history.doctype, sync_history.name, kwargs)
-	frappe.db.commit()
+	# This watermark is a batch checkpoint used by the next independent sync request.
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit

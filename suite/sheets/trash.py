@@ -74,6 +74,7 @@ def purge_trashed_sheets() -> dict:
 		if get_datetime(row.trashed_on) >= cutoff:
 			continue
 		hard_delete_sheet(name)
-		frappe.db.commit()
+		# Commit each destructive batch item so a later failure cannot undo prior progress.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 		purged += 1
 	return {"purged": purged}

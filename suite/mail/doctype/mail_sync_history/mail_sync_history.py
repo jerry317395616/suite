@@ -60,7 +60,8 @@ def create_mail_sync_history(
 	doc.insert(ignore_permissions=True)
 
 	if commit:
-		frappe.db.commit()
+		# Callers opt in when the record must survive a later batch failure.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	return doc
 

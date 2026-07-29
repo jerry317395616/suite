@@ -132,7 +132,12 @@ def upload_file(
 		# Find a cleaner way to handle folder sizes as multiple simultaneous uploads will break this
 		pass
 
-	frappe.publish_realtime("list-add", {"file": prettify_file(drive_file.as_dict())})
+	# File metadata must not be broadcast to every connected user on the site.
+	frappe.publish_realtime(
+		"list-add",
+		{"file": prettify_file(drive_file.as_dict())},
+		user=frappe.session.user,
+	)
 
 	return drive_file
 

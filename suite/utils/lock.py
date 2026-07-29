@@ -30,16 +30,16 @@ def acquire_lock(
 	lock_key = frappe.cache.make_key(f"lock:{lockname}")
 
 	if acquire_timeout == 0:
-		# nosemgrep: frappe-semgrep-rules.rules.frappe-cache-breaks-multitenancy
-		if frappe.cache.set(lock_key, identifier, ex=lock_timeout, nx=True):
+		# The key is site-prefixed above; raw SET is required for atomic NX locking.
+		if frappe.cache.set(lock_key, identifier, ex=lock_timeout, nx=True):  # nosemgrep: frappe-cache-breaks-multitenancy
 			return identifier
 		else:
 			return None
 
 	end = time.time() + acquire_timeout
 	while time.time() < end:
-		# nosemgrep: frappe-semgrep-rules.rules.frappe-cache-breaks-multitenancy
-		if frappe.cache.set(lock_key, identifier, ex=lock_timeout, nx=True):
+		# The key is site-prefixed above; raw SET is required for atomic NX locking.
+		if frappe.cache.set(lock_key, identifier, ex=lock_timeout, nx=True):  # nosemgrep: frappe-cache-breaks-multitenancy
 			return identifier
 		time.sleep(0.001)
 

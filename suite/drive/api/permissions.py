@@ -3,7 +3,7 @@ from frappe.model.document import Document
 from frappe.utils import getdate
 
 from suite.drive.utils import (
-	FILE_FIELDS,
+	file_fields,
 	STATUS_ACTIVE,
 	entity_kind,
 	generate_upward_path,
@@ -156,7 +156,7 @@ def get_entity_with_permissions(entity_name: str):
 		"File",
 		filters={"name": entity_name},
 		or_filters={"status": STATUS_ACTIVE, "team": ["is", "not set"]},
-		fields=FILE_FIELDS,
+		fields=file_fields(),
 		limit=1,
 	)
 	if not entity:

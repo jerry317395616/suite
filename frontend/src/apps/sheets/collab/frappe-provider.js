@@ -51,6 +51,10 @@ export function createFrappeProvider({
 		throw new Error('createFrappeProvider: doc, sheetId and realtime are required')
 	}
 
+	// Server relays are scoped to the Sheet document room, so only users who
+	// subscribed after opening this sheet receive its collaboration payloads.
+	realtime.subscribe?.()
+
 	const tag = selfTag || `cli-${Math.random().toString(36).slice(2, 10)}`
 	let stopped = false
 
@@ -159,6 +163,7 @@ export function createFrappeProvider({
 		realtime.off?.(EVT_UPDATE,        _onRemoteUpdate)
 		realtime.off?.(EVT_STATE_REQUEST, _onStateRequest)
 		realtime.off?.(EVT_STATE,         _onState)
+		realtime.unsubscribe?.()
 	}
 
 	// `flush` is exposed so callers that need a strict ordering guarantee
